@@ -112,11 +112,14 @@ class GeologyNPY(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         arr = np.load(self.paths[idx]).astype(np.float32)
 
-        # normalize to [-1, 1]
-        arr = (arr - arr.min()) / (arr.max() - arr.min() + 1e-8)
-        arr = arr * 2 - 1
+        arr_min = arr.min()
+        arr_max = arr.max()
 
-        return torch.from_numpy(arr).unsqueeze(0), 0
+        # normalize to [-1, 1]
+        arr_norm = (arr - arr_min) / (arr_max - arr_min + 1e-8)
+        arr_norm = arr_norm * 2 - 1
+
+        return torch.from_numpy(arr_norm).unsqueeze(0), arr_min, arr_max
 
 
 dataset = GeologyNPY(
@@ -246,7 +249,7 @@ def repaint(model, x0, mask, T, jump_length, jump_n_sample):
 def generate_ensemble_for_single_condition(
     model,
     dataset,
-    n_realizations=100,
+    n_realizations=50,
     mask_position=120,
     save_dir="/Home/siv36/hesal5042/Research/NORCE/inPainting_diffusionModel/Geology/repaint_results",
     fixed_idx_path=None
@@ -270,7 +273,15 @@ def generate_ensemble_for_single_condition(
             f.write(str(idx))
         print(f"Created fixed conditioning slice index: {idx}")
 
-    image = dataset[idx][0].unsqueeze(0).to(device)
+    # image = dataset[idx][0].unsqueeze(0).to(device)
+    image, arr_min, arr_max = dataset[idx]
+    image = image.unsqueeze(0).to(device)
+
+    arr_min = float(arr_min)
+    arr_max = float(arr_max)
+
+    print("Original porosity min:", arr_min)
+    print("Original porosity max:", arr_max)
 
     mask = torch.ones_like(image)
     mask[:, :, :, mask_position:] = 0
@@ -312,9 +323,38 @@ def generate_ensemble_for_single_condition(
 
         output_cpu = output.detach().cpu()
 
+        
+        #1.saving raw normalized output [-1, 1]
+        # this is the direct output of the model and can be useful for debugging or future reprocessing
         np.save(
-            f"{save_dir}/sample_{i:03d}.npy",
+            f"{save_dir}/sample_{i:03d}_normalized.npy",
             output_cpu.numpy()
+        )
+
+        
+        #2.png in [0,1] just for quick view
+        img_norm = output_cpu.squeeze().numpy()
+        img_display = (img_norm + 1) / 2
+        img_display = np.clip(img_display, 0, 1)
+
+        plt.imsave(
+            f"{save_dir}/sample_{i:03d}_display.png",
+            img_display,
+            cmap="gray"
+        )
+
+        #2.unnormalizing to physical porosity values using original min/max of the conditioning image
+        img_porosity = img_display * (arr_max - arr_min) + arr_min
+
+        np.save(
+            f"{save_dir}/sample_{i:03d}_porosity.npy",
+            img_porosity
+        )
+
+        plt.imsave(
+            f"{save_dir}/sample_{i:03d}_porosity.png",
+            img_porosity,
+            cmap="viridis"
         )
 
     print("Finished generation.")
@@ -499,7 +539,7 @@ if __name__ == "__main__":
     ensemble = generate_ensemble_for_single_condition(
         model,
         dataset,
-        n_realizations=1000,
+        n_realizations=100,
         mask_position=120
     )
 
