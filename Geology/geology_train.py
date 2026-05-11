@@ -163,15 +163,15 @@ def generate_samples(model, epoch, num_samples=1, img_size=(64, 256)):
         x = (x+ 1) / 2 # scale back to [0,1] now in ~[0,1], can slightly exceed 0 or 1
         x_phys = x * (dataset.global_max - dataset.global_min) + dataset.global_min # scale back to physical values or porosity values
         # save PHYSICAL data
-        np.save(f"/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/Geology_Code/output/train_generated_patches/1000/patch_epoch_{epoch}.npy",
+        np.save(f"/Home/siv36/hesal5042/Research/NORCE/inPainting_diffusionModel/Geology/Geology_Code/output/train_generated_patches/1000/patch_epoch_{epoch}.npy",
         x_phys.cpu().numpy())
-        save_image(x, f'/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/Geology_Code/output/train_geology_output/1000/epoch_{epoch}.png')
+        save_image(x, f'/Home/siv36/hesal5042/Research/NORCE/inPainting_diffusionModel/Geology/Geology_Code/output/train_geology_output/1000/epoch_{epoch}.png')
     print(f"Samples saved for epoch {epoch}")
 
 
 #training
 # dataset = GeologyXZDataset("/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/XZ_numpy_patches")
-dataset = GeologyXZDataset("/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/no_normalization_data/XZ_numpy_patches")
+dataset = GeologyXZDataset("/Home/siv36/hesal5042/Research/NORCE/inPainting_diffusionModel/Geology/sliced_data/XZ_numpy_patches")
 train_size = int(0.8 * len(dataset))
 test_size = len(dataset) - train_size
 train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
@@ -191,7 +191,7 @@ def train_geology_ddpm():
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     criterion = nn.MSELoss()
 
-    os.makedirs('/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/Geology_Code/output/100', exist_ok=True)
+    os.makedirs('/Home/siv36/hesal5042/Research/NORCE/inPainting_diffusionModel/Geology/Geology_Code/output/100', exist_ok=True)
     num_epochs = 100
 
     for epoch in range(num_epochs):
@@ -234,7 +234,7 @@ def train_geology_ddpm():
 
         # model cgeckpoint saves every 5 epochs
         if (epoch + 1) % 5 == 0:
-            torch.save(model.state_dict(), f'/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/Geology_Code/output/train_generated_patches/model_1000{epoch+1}.pth')
+            torch.save(model.state_dict(), f'/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/Geology_Code/output/train_generated_patches/model_100{epoch+1}.pth')
             
         #sample images generated every epock
         generate_samples(model, epoch+1, num_samples=1)

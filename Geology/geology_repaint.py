@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 
 #device
-device = "cuda:1" if torch.cuda.is_available() else "cpu"
+device = "cuda:7" if torch.cuda.is_available() else "cpu"
 print("Using device:", device)
 
 #unet model - this is same as training
@@ -75,7 +75,7 @@ model = GeologyUNet().to(device)
 
 model.load_state_dict(
     torch.load(
-        "/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/Geology_Code/output/train_geology_output/model100.pth",
+        "/Home/siv36/hesal5042/Research/NORCE/inPainting_diffusionModel/Geology/model/model100.pth",
         map_location=device
     )
 )
@@ -120,7 +120,7 @@ class GeologyNPY(torch.utils.data.Dataset):
 
 
 dataset = GeologyNPY(
-    "/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/Geology_Code/output/slice_XZ_numpy_patches"
+    "/Home/siv36/hesal5042/Research/NORCE/inPainting_diffusionModel/Geology/sliced_data/XZ_numpy_patches"
 )
 
 print("Dataset size:", len(dataset))
@@ -193,7 +193,7 @@ def repaint(model, x0, mask, T, jump_length, jump_n_sample):
 #     dataset,
 #     n_realizations=1000,
 #     mask_position=120,
-#     save_dir="/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/Geology_Code/output/repaint_ensemble/final"
+#     save_dir="/Home/siv36/hesal5042/Research/NORCE/inPainting_diffusionModel/Geology/repaint_results",
 # ):
 
 #     os.makedirs(save_dir, exist_ok=True)
@@ -246,9 +246,9 @@ def repaint(model, x0, mask, T, jump_length, jump_n_sample):
 def generate_ensemble_for_single_condition(
     model,
     dataset,
-    n_realizations=1000,
+    n_realizations=100,
     mask_position=120,
-    save_dir="/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/Geology_Code/output/repaint_ensemble/final",
+    save_dir="/Home/siv36/hesal5042/Research/NORCE/inPainting_diffusionModel/Geology/repaint_results",
     fixed_idx_path=None
 ):
 
