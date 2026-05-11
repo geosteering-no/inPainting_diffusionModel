@@ -39,8 +39,8 @@ def generate_xz_patches(
     dims,
     patch_size=(64, 256),   # height, width
     stride=(32, 128),       # vertical, horizontal stride
-    npy_folder="/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/no_normalization_data/XZ_numpy_patches",
-    png_folder="/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/no_normalization_data/XZ_png_patches",
+    npy_folder="/Home/siv36/hesal5042/Research/NORCE/inPainting_diffusionModel/Geology/sliced_data/XZ_numpy_patches",
+    png_folder="/Home/siv36/hesal5042/Research/NORCE/inPainting_diffusionModel/Geology/sliced_data/XZ_png_patches",
     use_npz=False
 ):
     os.makedirs(npy_folder, exist_ok=True)
@@ -84,13 +84,13 @@ def generate_xz_patches(
                 
                 png_path = os.path.join(png_folder, f"patch_{patch_counter}.png")
 
-                # patch_uint8 = (
-                #     255
-                #     * (patch_resized - patch_resized.min())
-                #     / (np.ptp(patch_resized) + 1e-8)
-                # ).astype(np.uint8)
+                patch_uint8 = (
+                    255
+                    * (patch_resized - patch_resized.min())
+                    / (np.ptp(patch_resized) + 1e-8)
+                ).astype(np.uint8)
 
-                # imageio.imwrite(png_path, patch_uint8)
+                imageio.imwrite(png_path, patch_uint8)
 
                 saved_files.append((np_file_path, png_path))
                 patch_counter += 1
@@ -110,7 +110,7 @@ generate_xz_patches(
     dims,
     patch_size=(64, 256),
     stride=(32, 128),
-    npy_folder="/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/no_normalization_data/XZ_numpy_patches",
-    png_folder="/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/no_normalization_data/XZ_png_patches",
+    npy_folder="/Home/siv36/hesal5042/Research/NORCE/inPainting_diffusionModel/Geology/sliced_data/XZ_numpy_patches",
+    png_folder="/Home/siv36/hesal5042/Research/NORCE/inPainting_diffusionModel/Geology/sliced_data/XZ_png_patches",
     use_npz=False
 )
