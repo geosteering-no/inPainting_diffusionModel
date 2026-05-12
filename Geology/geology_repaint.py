@@ -140,7 +140,7 @@ dataset = GeologyNPY(
 print("Dataset size:", len(dataset))
 
 
-# FIX 2 + FIX 3: Corrected RePaint — jump logic and x_known timestep
+
 def repaint(model, x0, mask, T, jump_length, jump_n_sample):
 
     model.eval()
