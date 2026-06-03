@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 
 # device
-device = "cuda:6" if torch.cuda.is_available() else "cpu"
+device = "cuda:1" if torch.cuda.is_available() else "cpu"
 print("Using device:", device)
 
 
@@ -18,65 +18,64 @@ class GeologyUNet(nn.Module):
     def __init__(self):
         super().__init__()
 
-        self.enc1 = self._block(1, 64)
-        self.enc2 = self._block(64, 128)
-        self.enc3 = self._block(128, 256)
-        self.enc4 = self._block(256, 512)
+        self.enc1 = self._block(1, 96)
+        self.enc2 = self._block(96, 192)
+        self.enc3 = self._block(192, 384)
+        self.enc4 = self._block(384, 768)
 
-        self.bottleneck = self._block(512, 512)
+        self.bottleneck = self._block(768, 768)
 
         self.time_embed = nn.Sequential(
-            nn.Linear(1, 256),
+            nn.Linear(1, 384),
             nn.SiLU(),
-            nn.Linear(256, 512),
+            nn.Linear(384, 768),
         )
 
-        self.dec1 = self._block(512 + 512, 256)
-        self.dec2 = self._block(256 + 256, 128)
-        self.dec3 = self._block(128 + 128, 64)
-        self.dec4 = self._block(64 + 64, 64)
+        self.dec1 = self._block(768 + 768, 384)
+        self.dec2 = self._block(384 + 384, 192)
+        self.dec3 = self._block(192 + 192, 96)
+        self.dec4 = self._block(96 + 96, 96)
 
-        self.final = nn.Conv2d(64, 1, kernel_size=1)
+        self.final = nn.Conv2d(96, 1, kernel_size=1)
 
-        self.down = nn.MaxPool2d(2)
-        self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+        self.downsample = nn.MaxPool2d(2)
+        self.upsample = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True)
 
-    def _block(self, in_c, out_c):
+    def _block(self, in_channels, out_channels):
         return nn.Sequential(
-            nn.Conv2d(in_c, out_c, 3, padding=1),
-            nn.BatchNorm2d(out_c),
+            nn.Conv2d(in_channels, out_channels, 3, padding=1),
+            nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
-            nn.Conv2d(out_c, out_c, 3, padding=1),
-            nn.BatchNorm2d(out_c),
+            nn.Conv2d(out_channels, out_channels, 3, padding=1),
+            nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
         )
 
     def forward(self, x, t):
-        t_emb = self.time_embed(t.unsqueeze(-1).float())
-        t_emb = t_emb.unsqueeze(-1).unsqueeze(-1)
+        t_embed = self.time_embed(t.unsqueeze(-1).float())
+        t_embed = t_embed.unsqueeze(-1).unsqueeze(-1)
 
         e1 = self.enc1(x)
-        e2 = self.enc2(self.down(e1))
-        e3 = self.enc3(self.down(e2))
-        e4 = self.enc4(self.down(e3))
+        e2 = self.enc2(self.downsample(e1))
+        e3 = self.enc3(self.downsample(e2))
+        e4 = self.enc4(self.downsample(e3))
 
-        bott = self.bottleneck(self.down(e4))
-        bott = bott + t_emb
+        bottleneck = self.bottleneck(self.downsample(e4))
+        t_embed = t_embed.expand_as(bottleneck)
+        bottleneck = bottleneck + t_embed
 
-        d1 = self.dec1(torch.cat([self.up(bott), e4], dim=1))
-        d2 = self.dec2(torch.cat([self.up(d1), e3], dim=1))
-        d3 = self.dec3(torch.cat([self.up(d2), e2], dim=1))
-        d4 = self.dec4(torch.cat([self.up(d3), e1], dim=1))
+        d1 = self.dec1(torch.cat([self.upsample(bottleneck), e4], dim=1))
+        d2 = self.dec2(torch.cat([self.upsample(d1), e3], dim=1))
+        d3 = self.dec3(torch.cat([self.upsample(d2), e2], dim=1))
+        d4 = self.dec4(torch.cat([self.upsample(d3), e1], dim=1))
 
         return self.final(d4)
-
-
 
 model = GeologyUNet().to(device)
 
 model.load_state_dict(
     torch.load(
-        "/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/Geology_Code/output/train_geology_output/model100.pth",
+        "/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/Geology_Code/output/train_generated_patches/unet/model_100100.pth",
         map_location=device
     )
 )
@@ -134,7 +133,7 @@ class GeologyNPY(torch.utils.data.Dataset):
 
 
 dataset = GeologyNPY(
-    "/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/Geology_Code/output/slice_XZ_numpy_patches"
+    "/Home/siv36/hesal5042/Research/NORCE/inPainting_diffusionModel/Geology/sliced_data/XZ_numpy_patches"
 )
 
 print("Dataset size:", len(dataset))
@@ -244,7 +243,7 @@ def generate_ensemble_for_single_condition(
     dataset,
     n_realizations=1000,
     mask_position=120,
-    save_dir="/Home/siv36/hesal5042/Research/NORCE/inPainting_diffusionModel/Geology/repaint_results",
+    save_dir="/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/Geology_Code/output/train_generated_patches/unet/repaint_results",
     fixed_idx_path=None
 ):
     os.makedirs(save_dir, exist_ok=True)
@@ -262,7 +261,6 @@ def generate_ensemble_for_single_condition(
     #     with open(fixed_idx_path, "w") as f:
     #         f.write(str(idx))
     #     print(f"Created fixed conditioning slice index: {idx}")
-
     idx = 100
     print(f"Using fixed conditioning slice index: {idx}")
 
@@ -361,5 +359,5 @@ if __name__ == "__main__":
         dataset,
         n_realizations=100,
         mask_position=120,
-        save_dir="/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/Geology_Code/output/train_generated_patches/unet/baseline"
+        save_dir="/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/Geology_Code/output/train_generated_patches/unet/wider"
     )
