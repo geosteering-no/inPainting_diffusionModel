@@ -7,6 +7,7 @@ from tqdm import tqdm
 from torchvision.utils import save_image
 from torch.utils.data import random_split
 import time
+import wandb
 
 start = time.time()
 
@@ -164,9 +165,9 @@ def generate_samples(model, epoch, num_samples=1, img_size=(64, 256)):
         x = (x+ 1) / 2 # scale back to [0,1] now in ~[0,1], can slightly exceed 0 or 1
         x_phys = x * (dataset.global_max - dataset.global_min) + dataset.global_min # scale back to physical values or porosity values
         # save PHYSICAL data
-        np.save(f"/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/Geology/Geology_Code/output/unet/patch_epoch_{epoch}.npy",
+        np.save(f"/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/Geology/Geology_Code/output/unet/patch_epoch_wandb_{epoch}.npy",
         x_phys.cpu().numpy())
-        save_image(x, f'/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/Geology/Geology_Code/output/unet/epoch_{epoch}.png')
+        save_image(x, f'/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/Geology/Geology_Code/output/unet/epochwandb_{epoch}.png')
     print(f"Samples saved for epoch {epoch}")
 
 
@@ -185,44 +186,61 @@ print("Total dataset:", len(dataset))
 print("Train dataset:", len(train_dataset))
 print("Batch size:", train_loader.batch_size)
 print("Train batches per epoch:", len(train_loader))
+
 def train_geology_ddpm():
 
+    wandb.init(
+        project="geology-ddpm",
+        name="unet96_100epochs",
+        config={
+            "architecture": "GeologyUNet_96_192_384_768",
+            "epochs": 100,
+            "batch_size": 16,
+            "learning_rate": 1e-4,
+            "T": T,
+            "beta_start": beta_start,
+            "beta_end": beta_end,
+            "loss": "MSE noise prediction",
+        }
+    )
 
     model = GeologyUNet().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     criterion = nn.MSELoss()
 
-    os.makedirs('/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/Geology/Geology_Code/output/unet/100', exist_ok=True)
     num_epochs = 100
 
     for epoch in range(num_epochs):
         model.train()
         running_loss = 0.0
+
         for imgs, _ in tqdm(train_loader, desc=f"Epoch {epoch+1}/{num_epochs}"):
             imgs = imgs.to(device)
             batch_size = imgs.size(0)
+
             t = torch.randint(0, T, (batch_size,), device=device).long()
             noisy_imgs, noise = forward_diffusion(imgs, t)
             predicted_noise = model(noisy_imgs, t)
 
             loss = criterion(predicted_noise, noise)
+
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+
             running_loss += loss.item()
 
         avg_loss = running_loss / len(train_loader)
         print(f"Epoch {epoch+1}/{num_epochs}, Avg Loss: {avg_loss:.4f}")
 
-
-        # test set evaluation
-       
         model.eval()
         test_loss = 0.0
+
         with torch.no_grad():
             for imgs, _ in test_loader:
                 imgs = imgs.to(device)
                 batch_size = imgs.size(0)
+
                 t = torch.randint(0, T, (batch_size,), device=device).long()
                 noisy_imgs, noise = forward_diffusion(imgs, t)
                 predicted_noise = model(noisy_imgs, t)
@@ -233,14 +251,20 @@ def train_geology_ddpm():
         avg_test_loss = test_loss / len(test_loader)
         print(f"Test Loss: {avg_test_loss:.4f}")
 
-        # model cgeckpoint saves every 5 epochs
-        if (epoch + 1) % 5 == 0:
-            torch.save(model.state_dict(), f'/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/Geology_Code/output/train_generated_patches/unet/model_100{epoch+1}.pth')
-            
-        #sample images generated every epock
-        generate_samples(model, epoch+1, num_samples=1)
-     
+        wandb.log({
+            "epoch": epoch + 1,
+            "train_loss": avg_loss,
+            "test_loss": avg_test_loss,
+        })
 
+        if (epoch + 1) % 5 == 0:
+            ckpt_path = f"/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/Geology_Code/output/train_generated_patches/unet/model_wandb{epoch+1}.pth"
+            torch.save(model.state_dict(), ckpt_path)
+            wandb.save(ckpt_path)
+
+        generate_samples(model, epoch+1, num_samples=1)
+
+    wandb.finish()
 
 
 if __name__ == "__main__":

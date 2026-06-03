@@ -7,11 +7,12 @@ from tqdm import tqdm
 from torchvision.utils import save_image
 from torch.utils.data import random_split
 import time
+import wandb
 
 start = time.time()
 
 #device
-device = "cuda:2" if torch.cuda.is_available() else "cpu"
+device = "cuda:7" if torch.cuda.is_available() else "cpu"
 print("Using device:", device)
 
 #hyperparameters for diffusion
@@ -163,9 +164,9 @@ def generate_samples(model, epoch, num_samples=1, img_size=(64, 256)):
         x = (x+ 1) / 2 # scale back to [0,1] now in ~[0,1], can slightly exceed 0 or 1
         x_phys = x * (dataset.global_max - dataset.global_min) + dataset.global_min # scale back to physical values or porosity values
         # save PHYSICAL data
-        np.save(f"/Home/siv36/hesal5042/Research/NORCE/inPainting_diffusionModel/Geology/Geology_Code/output/train_generated_patches/1000/patch_epoch_{epoch}.npy",
+        np.save(f"/Home/siv36/hesal5042/Research/NORCE/inPainting_diffusionModel/Geology/Geology_Code/output/100wandb/patch_epochwandb_{epoch}.npy",
         x_phys.cpu().numpy())
-        save_image(x, f'/Home/siv36/hesal5042/Research/NORCE/inPainting_diffusionModel/Geology/Geology_Code/output/train_geology_output/1000/epoch_{epoch}.png')
+        save_image(x, f'/Home/siv36/hesal5042/Research/NORCE/inPainting_diffusionModel/Geology/Geology_Code/output/100wandb/epochwandb_{epoch}.png')
     print(f"Samples saved for epoch {epoch}")
 
 
@@ -185,13 +186,26 @@ print("Train dataset:", len(train_dataset))
 print("Batch size:", train_loader.batch_size)
 print("Train batches per epoch:", len(train_loader))
 def train_geology_ddpm():
-
+    wandb.init(
+        project="geology-ddpm-baseline",
+        name="unetbaseline_100epochs",
+        config={
+            "architecture": "GeologyUNet_baseline",
+            "epochs": 100,
+            "batch_size": 16,
+            "learning_rate": 1e-4,
+            "T": T,
+            "beta_start": beta_start,
+            "beta_end": beta_end,
+            "loss": "MSE noise prediction",
+        }
+    )
 
     model = GeologyUNet().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
     criterion = nn.MSELoss()
 
-    os.makedirs('/Home/siv36/hesal5042/Research/NORCE/inPainting_diffusionModel/Geology/Geology_Code/output/100', exist_ok=True)
+    os.makedirs('/Home/siv36/hesal5042/Research/NORCE/inPainting_diffusionModel/Geology/Geology_Code/output/100wandb', exist_ok=True)
     num_epochs = 100
 
     for epoch in range(num_epochs):
@@ -231,15 +245,21 @@ def train_geology_ddpm():
 
         avg_test_loss = test_loss / len(test_loader)
         print(f"Test Loss: {avg_test_loss:.4f}")
-
+        wandb.log({
+            "epoch": epoch + 1,
+            "train_loss": avg_loss,
+            "test_loss": avg_test_loss,
+        })
         # model cgeckpoint saves every 5 epochs
         if (epoch + 1) % 5 == 0:
-            torch.save(model.state_dict(), f'/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/Geology_Code/output/train_generated_patches/model_100{epoch+1}.pth')
+            ckpt_path = f'/Home/siv36/hesal5042/Research/NORCE/hello/RePaint/guided_diffusion_mnist/guided_diffusion/Geology/Geology_Code/output/train_generated_patches/model_wandb100{epoch+1}.pth'
+            torch.save(model.state_dict(), ckpt_path)
+            wandb.save(ckpt_path)
             
         #sample images generated every epock
         generate_samples(model, epoch+1, num_samples=1)
      
-
+    wandb.finish()
 
 
 if __name__ == "__main__":
