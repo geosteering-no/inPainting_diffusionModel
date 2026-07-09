@@ -291,8 +291,8 @@ def generate_ensemble_for_single_condition(
             known_region,
             mask,
             T,
-            jump_length=5,
-            jump_n_sample=5
+            jump_length,
+            jump_n_sample
         )
         #the process is to first convert [-1,1] to  [0,1] for display and plotting, then convert to physical porosity values for variogram analysis and ensemble saving. This way we keep the scale consistent for each use case.
         # output in [-1,1]
