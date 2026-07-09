@@ -139,7 +139,7 @@ dataset = GeologyNPY(
 
 print("Dataset size:", len(dataset))
 
-def get_repaint_schedule(T, jump_length=5, jump_n_sample=20):
+def get_repaint_schedule(T, jump_length=5, jump_n_sample=5):
     """
     Creates RePaint-style forward/backward timestep schedule.
 
