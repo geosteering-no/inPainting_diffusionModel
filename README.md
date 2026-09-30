@@ -18,7 +18,7 @@ Newest to oldest
 }
 ```
 
-2. Heebah Saleem; Nello Blaser; Sergey Alyaev; Kristian Fossum; Ahmed H. ElSheikh **Generation of Local Geological Structure Ahead of the Bit Using Diffusion-Based AI Models** in SPE Europe Subsurface Conference 2026.
+2. Heebah Saleem; Nello Blaser; Sergey Alyaev; Kristian Fossum; Ahmed H. ElSheikh **Generation of Local Geological Structure Ahead of the Bit Using Diffusion-Based AI Models** [in SPE Europe Subsurface Conference 2026](https://doi.org/10.2118/231925-MS)
 
 ```
 @inproceedings{saleem2026generation,
